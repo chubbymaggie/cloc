@@ -4,6 +4,7 @@ use strict;
 use Test::More;
 use File::Copy "cp";
 use Cwd;
+#use YAML qw(LoadFile);
 my @Tests = (
                 {
                     'name' => '--exclude-dir 1 (baseline for github issue #82)',
@@ -142,6 +143,112 @@ my @Tests = (
                     'args' => 'eval1957.SACunidir.fr',
                     'ref'  => '../tests/outputs/issues/183/eval1957.SACunidir.fr.yaml',
                 },
+                {
+                    'name' => 'diff identical files (github issue #280)',
+                    'cd'   => '../tests/inputs/issues/280',
+                    'args' => '--diff L R',
+                    'ref'  => '../tests/outputs/issues/280/280.yaml',
+                },
+                {
+                    'name' => 'diff identical files by file (github issue #280)',
+                    'cd'   => '../tests/inputs/issues/280',
+                    'args' => '--by-file --diff L R',
+                    'ref'  => '../tests/outputs/issues/280/280_by_file.yaml',
+                },
+
+                {
+                    'name' => '--follow-links, --not-match-d, --fullpath  1/6 (github issue #286)',
+                    'cd'   => '../tests/inputs/issues/286',
+                    'args' => '               --not-match-d ignore_subdir                    project',
+                    'ref'  => '../tests/outputs/issues/286/1.yaml',
+                },
+
+                {
+                    'name' => '--follow-links, --not-match-d, --fullpath  2/6 (github issue #286)',
+                    'cd'   => '../tests/inputs/issues/286',
+                    'args' => '--follow-links --not-match-d ignore_subdir                    project',
+
+                    'ref'  => '../tests/outputs/issues/286/2.yaml',
+                },
+
+                {
+                    'name' => '--follow-links, --not-match-d, --fullpath  3/6 (github issue #286)',
+                    'cd'   => '../tests/inputs/issues/286',
+                    'args' => '               --not-match-d ignore_subdir --fullpath         project',
+
+                    'ref'  => '../tests/outputs/issues/286/3.yaml',
+                },
+
+                {
+                    'name' => '--follow-links, --not-match-d, --fullpath  4/6 (github issue #286)',
+                    'cd'   => '../tests/inputs/issues/286',
+                    'args' => '--follow-links --not-match-d ignore_subdir --fullpath         project',
+                    'ref'  => '../tests/outputs/issues/286/4.yaml',
+                },
+
+                {
+                    'name' => '--follow-links, --not-match-d, --fullpath  5/6 (github issue #286)',
+                    'cd'   => '../tests/inputs/issues/286',
+                    'args' => '               --not-match-d project/ignore_subdir --fullpath project',
+                    'ref'  => '../tests/outputs/issues/286/5.yaml',
+                },
+
+                {
+                    'name' => '--follow-links, --not-match-d, --fullpath  6/6 (github issue #286)',
+                    'cd'   => '../tests/inputs/issues/286',
+                    'args' => '--follow-links --not-match-d project/ignore_subdir --fullpath project',
+                    'ref'  => '../tests/outputs/issues/286/6.yaml',
+                },
+
+                {
+                    'name' => '--include-ext m,lua (github issue #296)',
+                    'cd'   => '../tests/inputs',
+                    'args' => '--include-ext m,lua .',
+                    'ref'  => '../tests/outputs/issues/296/results.yaml',
+                },
+
+                {
+                    'name' => '--strip-str-comments (github issue #245)',
+                    'cd'   => '../tests/inputs/issues/245',
+                    'args' => '--strip-str-comments .',
+                    'ref'  => '../tests/outputs/issues/245/CRS.scala.yaml',
+                },
+
+                {
+                    'name' => 'YAML --by-file output with unusual filename (github issue #312)',
+                    'cd'   => '../tests/inputs/issues/312',
+                    'args' => '--by-file .',
+                    'ref'  => '../tests/outputs/issues/312/results.yaml',
+                },
+
+                {
+                    'name' => 'custom Smarty definition (github issue #327)',
+                    'cd'   => '../tests/inputs/issues/327',
+                    'args' => '--force-lang-def=lang.config example.smarty2',
+                    'ref'  => '../tests/outputs/issues/327/results.yaml',
+                },
+
+                {
+                    'name' => 'UTF-8 output file encoding',
+                    'cd'   => '../tests/inputs/issues/318',
+                    'args' => '--by-file --file-encoding utf8 R*.cs',
+                    'ref'  => '../tests/inputs/issues/318/Rcs.yaml',  # results in input dir
+                },
+
+                {
+                    'name' => 'distinguish TeX from VB (github issue #341)',
+                    'cd'   => '../tests/inputs/issues/341',
+                    'args' => '.',
+                    'ref'  => '../tests/outputs/issues/341/results.yaml',
+                },
+
+
+#               {
+#                   'name' => '--count-and--diff with --out',
+#                   'cd'   => '../tests/inputs/issues/220',
+#                   'args' => '--count-and-diff ../../aa ../../dd',
+#                   'ref'  => '../tests/outputs/issues/220/rpt.yaml.diff..._.._aa..._.._dd',
+#               },
             );
 
 # Create test input for issue #132 which needs data not in the git repo.
@@ -153,33 +260,44 @@ my $Verbose = 0;
 
 my $results = 'results.yaml';
 my $work_dir = getcwd;
-my $cloc    = "$work_dir/../cloc";
+my $cloc     = "$work_dir/../cloc";   # all-purpose version
+#my $cloc     = "$work_dir/cloc";      # Unix-tuned version
 my $Run = "$cloc --quiet --yaml --out $results ";
 foreach my $t (@Tests) {
     chdir($t->{'cd'}) if defined $t->{'cd'};
+    print "Run  dir= ", cwd(), "\n" if $Verbose;
     print  $Run . $t->{'args'} if $Verbose;
     system($Run . $t->{'args'});
     ok(-e $results, $t->{'name'} . " created output");
     my %this = load_yaml($results);
-    unlink $results;
+    unlink $results unless $Verbose;
     chdir($work_dir) if defined $t->{'cd'};
+    print "Load dir= ", cwd(), "\n" if $Verbose;
     my %ref  = load_yaml($t->{'ref'});
+
+#   my $REF = LoadFile($t->{'ref'});  # using official YAML module
+#   is_deeply($REF , \%this, $t->{'name'} . " results match");
+
+#   use Data::Dumper;
+#   print Dumper(\%ref);
+#   print Dumper(\%this);
+
     is_deeply(\%ref, \%this, $t->{'name'} . " results match");
 }
 done_testing();
 
-sub load_yaml {                             # {{{1
+sub load_yaml { # {{{1
     my ($file, ) = @_;
     my %result = ();
     if (!-r $file) {
-        warn "File not found: $file\n"; 
+        warn "File not found: $file\n";
         return %result;
     }
     open IN, $file or return %result;
     my $section = undef;
     while (<IN>) {
         next if /^\s*#/ or /^--/;
-        if (/^(\w+)\s*:\s*$/) {
+        if (/^\s*'?(.*?)'?\s*:\s*$/) {
             $section = $1;
             next;
         }
